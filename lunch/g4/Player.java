@@ -22,89 +22,170 @@ public class Player implements lunch.sim.Player
 	private Random random;
 	private Integer id;
 	private Integer turn;
-	private String avatars;
+	private boolean inCorner;
+	private double cornerMove;
+	private Point corner;
 
 	public Player()
 	{
 		turn = 0;
 	}
 
-	public String init(ArrayList<Family> members, Integer id, int f,ArrayList<Animal> animals, Integer m, Integer g, double t, Integer s)
+	public void init(ArrayList<Family> members, Integer id, int f,ArrayList<Animal> animals, Integer m, Integer g, double t, Integer s)
 	{
 		this.id = id;
-		avatars = "flintstone";
 		random = new Random(s);
-		return avatars;
+		inCorner = false;
+		cornerMove = Math.sqrt(2.) / 2.;
+		corner = new Point(50., 50.);
 	}
 
 	public Command getCommand(ArrayList<Family> members, ArrayList<Animal> animals, PlayerState ps)
 	{
+		ArrayList<Animal> monkey = new ArrayList<>();
+		ArrayList<Animal> geese = new ArrayList<>();
+		ArrayList<Double> mDist = new ArrayList<>();
+		ArrayList<Double> gDist = new ArrayList<>();
+
+		updateList(animals, monkey, geese);
 
 		Double min_dist = Double.MAX_VALUE;
 
-		for(Integer i = 0; i < animals.size(); i++) {
-			min_dist = Math.min(min_dist, Point.dist(ps.get_location(), animals.get(i).get_location()));
+		for(Integer i=0;i<animals.size();i++)
+		{
+			//dist.add(Point.dist(ps.get_location(), animals.get(i).get_location()));
+			min_dist = Math.min(min_dist,Point.dist(ps.get_location(),animals.get(i).get_location()));
 		}
 
-//		if(turn<300)
-//		{
-//			boolean found_valid_move= false;
-//			Point next_move = new Point(-1,-1);
-//			while(!found_valid_move)
-//			{
-//				Double bearing = random.nextDouble()*2*Math.PI;
-//				next_move = new Point(ps.get_location().x + Math.cos(bearing), ps.get_location().y + Math.sin(bearing));
-//				found_valid_move = Point.within_bounds(next_move);
-//			}
-//			// System.out.println("move command issued");
-//			turn++;
-//			return Command.createMoveCommand(next_move);
-//		}
+		for(Integer i=0;i<monkey.size();i++)
+		{
+			mDist.add(Point.dist(ps.get_location(), animals.get(i).get_location()));
+		}
+
+		for(Integer i=0;i<geese.size();i++)
+		{
+			gDist.add(Point.dist(ps.get_location(), animals.get(i).get_location()));
+		}
+
+		//sortTwoList(monkey, mDist);
+		//sortTwoList(geese, gDist);
+		//System.out.println("Monkey");
+		//System.out.println(mDist);
+		//System.out.println("Geese");
+		//System.out.println(gDist);
+
+		while(!inCorner) {
+			Point next_move = new Point(-1, -1);
+			if(Point.dist(ps.get_location(), corner) <= 1) {
+				inCorner = true;
+				System.out.println(corner);
+				return Command.createMoveCommand(corner);
+			}
+			next_move = new Point(ps.get_location().x + cornerMove, ps.get_location().y + cornerMove);
+			turn++;
+			//System.out.println(next_move);
+			return Command.createMoveCommand(next_move);
+		}
+		turn++;
+		System.out.println(turn);
 
 		// abort taking out if animal is too close
-		if(min_dist < 3.0 && ps.is_player_searching() && ps.get_held_item_type() == null) {
-			// System.out.println("abort command issued");
+		boolean danger = inDanger(monkey, geese, ps);
+		if(danger && ps.is_player_searching() && ps.get_held_item_type()==null)
+		{
+			 System.out.println("abort command issued");
+			 System.out.println(numMonkeyInArea(monkey, ps));
 			// System.out.println(min_dist.toString());
 			return new Command(CommandType.ABORT);
 		}
 		// keep food item back if animal is too close
-		if(!ps.is_player_searching() && ps.get_held_item_type() != null && min_dist < 2.0) {
+		else if(!ps.is_player_searching() && ps.get_held_item_type()!=null && danger)
+		{
+			System.out.println("putting away food");
+			System.out.println(numMonkeyInArea(monkey, ps));
 			return new Command(CommandType.KEEP_BACK);
 		}
-//		// move away from animal
-//		if(min_dist < 3.0) {
-//			boolean found_valid_move= false;
-//			Point next_move = new Point(-1,-1);
-//			while(!found_valid_move) {
-//				Double bearing = random.nextDouble()*2*Math.PI;
-//				next_move = new Point(ps.get_location().x + Math.cos(bearing), ps.get_location().y + Math.sin(bearing));
-//				found_valid_move = Point.within_bounds(next_move);
-//			}
-//			return Command.createMoveCommand(next_move);
-//			
-//		}
+
 		// if no animal is near then take out food
-		if (!ps.is_player_searching() && min_dist >= 5 && ps.get_held_item_type() == null) {
-			FoodType foodType = ps.check_availability_item(FoodType.COOKIE) ? FoodType.COOKIE : 
-								ps.check_availability_item(FoodType.FRUIT1) ? FoodType.FRUIT1 :
-								ps.check_availability_item(FoodType.FRUIT2) ? FoodType.FRUIT2 : 
-								ps.check_availability_item(FoodType.EGG) ? FoodType.EGG :
-								ps.check_availability_item(FoodType.SANDWICH1) ? FoodType.SANDWICH1 :
-								ps.check_availability_item(FoodType.SANDWICH2) ? FoodType.SANDWICH2	: 
-								null;
-			if(foodType != null) {
-				Command c = new Command(CommandType.TAKE_OUT, foodType);
-				return c;
+		else if (!ps.is_player_searching() &&  !danger && ps.get_held_item_type()==null )
+		{
+			System.out.println("taking out food");
+			for(FoodType food_type: FoodType.values())
+			{
+				if(ps.check_availability_item(food_type))
+				{
+					Command c = new Command(CommandType.TAKE_OUT, food_type);
+					return c;
+				}
 			}
 		}
 		// if no animal in vicinity then take a bite
-		if(!ps.is_player_searching() && ps.get_held_item_type() != null) {
+		else if(!danger && !ps.is_player_searching() && ps.get_held_item_type()!=null)
+		{
+			System.out.println("Eating");
+			System.out.println(numMonkeyInArea(monkey, ps));
 			return new Command(CommandType.EAT);
 		}
 
-		// System.out.println("player is searching");
-		return new Command();
+		System.out.println("player is waiting");
+		return new Command(CommandType.WAIT);
+
 	}
 
+	public void sortTwoList(List<Animal> a, List<Double> b) {
+		//System.out.println(b.size());
+		for(int i = 0; i < b.size(); i++) {
+			for(int j = i+1; j < b.size(); j++) {
+				//System.out.println(i + ", " + j);
+				if(b.get(i) > b.get(j)) {
+					double dT = b.get(i);
+					b.set(i, b.get(j));
+					b.set(j, dT);
+
+					Animal aT = a.get(j);
+					a.set(i, a.get(j));
+					a.set(i, aT);
+				}
+			}
+		}
+	}
+
+	public void updateList(List<Animal> animals, List<Animal> monkey, List<Animal> geese) {
+		for(Animal a : animals) {
+			switch(a.which_animal()) {
+				case MONKEY: 
+					//System.out.println("MONKEY!");
+					monkey.add(a);
+					break;
+				case GOOSE:
+					//System.out.println("GEESE");
+					geese.add(a);
+					break;
+			}
+		}
+	}
+
+	public boolean inDanger(List<Animal> monkey, List<Animal> geese, PlayerState ps) {
+		if(numMonkeyInArea(monkey, ps) >= 3) return true;
+		if(geeseInArea(geese, ps)) return true;
+		return false;
+	}
+
+	public int numMonkeyInArea(List<Animal> monkey, PlayerState ps) {
+		int count = 0;
+		for(Animal a: monkey) {
+			if(Point.dist(a.get_location(), ps.get_location()) <= 6.+10e-7) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	public boolean geeseInArea(List<Animal> geese, PlayerState ps) {
+		for(Animal a: geese) {
+			if(Point.dist(a.get_location(), ps.get_location()) <= 5.+10e-7) return true;
+		}
+		return false;
+	}
 
 }
