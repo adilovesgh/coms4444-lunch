@@ -24,8 +24,7 @@ import lunch.sim.PlayerState;
  * Represents a COMS 4444 player that is having lunch
  *
  */
-public class Player implements lunch.sim.Player
-{
+public class Player implements lunch.sim.Player {
 	private Random random;
 	private Integer id;
 	private Integer turn;
@@ -37,7 +36,8 @@ public class Player implements lunch.sim.Player
 	private List<Point> targetCorners = Arrays.asList(new Point[]{
 			new Point(-50, -50), // Top-left corner
 			new Point(-50, 50),  // Bottom-left corner
-			new Point(50, -50)	 // Top-right corner
+			new Point(50, -50),  // Top-right corner
+			new Point(50, 50)    // Bottom-right corner
 			});
 	private Map<Integer, Point> targetCornersChosen = new HashMap<>();
 	private FoodType foodCurrentlySearchingFor = null;
@@ -70,6 +70,7 @@ public class Player implements lunch.sim.Player
 		this.id = id;
 		avatars = "flintstone";
 		random = new Random();
+
 		monkeyT = new ArrayList<>();
 		geeseT = new ArrayList<>();
 
@@ -98,23 +99,28 @@ public class Player implements lunch.sim.Player
 	 *
 	 */
 	public Command getCommand(ArrayList<Family> members, ArrayList<Animal> animals, PlayerState ps) {
+
 		int mt = 0;
 		int gt = 0;
+		int monkeyInRange = 0;
+		int geeseInRange = 0;
 		for(Animal animal : animals) {
 			if(animal.which_animal() == AnimalType.MONKEY) {
 				monkeyT.get(mt).update(animal.get_location());
+				if(!monkeyT.get(mt).isFar(ps.get_location())) monkeyInRange++;
 				mt++;
 			}
 			else if(animal.which_animal() == AnimalType.GOOSE) {
 				geeseT.get(gt).update(animal.get_location());
+				if(!geeseT.get(gt).isFar(ps.get_location())) geeseInRange++;
 				gt++;
 			}
 		}
 
-		System.out.println("Monkey!");
+		/*System.out.println("Monkey!");
 		for(T a : monkeyT) {
-			System.out.println(a.location);
-			System.out.println("Next: " + a.getNext());
+			//System.out.println(a.location);
+			//System.out.println("Next: " + a.getNext());
 			//if(a.slope == Double.MAX_VALUE) System.out.println("undefined");
 			//else System.out.println(a.slope);
 		}
@@ -124,7 +130,7 @@ public class Player implements lunch.sim.Player
 			System.out.println("Next: " + a.getNext());
 			//if(a.slope == Double.MAX_VALUE) System.out.println("undefined");
 			//else System.out.println(a.slope);
-		}
+		}*/
 
 		if(turn < 100) {
 			boolean foundValidMove = false;
@@ -137,6 +143,8 @@ public class Player implements lunch.sim.Player
 			turn++;
 			return Command.createMoveCommand(nextMove);
 		}
+
+		turn++;
 
 		// Determine animals sorted by closest distance to the player
 		ArrayList<Animal> clonedAnimals = new ArrayList<>(animals);
@@ -153,9 +161,8 @@ public class Player implements lunch.sim.Player
 		geese = new ArrayList<>();
 		
 		for(Animal animal : clonedAnimals) {
-			if(animal.which_animal() == AnimalType.MONKEY && !animal.busy_eating()) {
+			if(animal.which_animal() == AnimalType.MONKEY && !animal.busy_eating())
 				monkeys.add(animal);
-			}
 			else if(animal.which_animal() == AnimalType.GOOSE && !animal.busy_eating())
 				geese.add(animal);
 		}
@@ -189,7 +196,7 @@ public class Player implements lunch.sim.Player
 		// Print the state of the player
 		//System.out.println("Player is still holding item: " + (ps.get_held_item_type() != null));
 		//System.out.println("Player is still searching: " + (ps.is_player_searching()));
-		printAvailability(ps);
+		//printAvailability(ps);
 
 		// Abort taking out the food item if the animal is too close
 		if(ps.is_player_searching() && ps.get_held_item_type() == null &&
@@ -219,11 +226,22 @@ public class Player implements lunch.sim.Player
 								null;
 			
 			if(foodType != null) {
-				
+				boolean usePrediction = true;
+				if(monkeyInRange > 2) {
+					System.out.println("Too many monkeys in range in 10 moves");
+					System.out.println("Monkeys in range: " + monkeyInRange);
+					usePrediction = false;
+				}
+				else {
+					System.out.println("In the clear!");
+					System.out.println("Monkeys in range: " + monkeyInRange);
+				}
 				// Take out the food item if it is not a sandwich and monkeys are not too close
-				if(foodType != FoodType.SANDWICH1 && foodType != FoodType.SANDWICH2) {
+				if(foodType != FoodType.SANDWICH1 && foodType != FoodType.SANDWICH2 && usePrediction) {
+					
 					//System.out.println("Player " + id + " is taking out " + foodType.name() + ".");
 					foodCurrentlySearchingFor = foodType;
+					//System.out.println("take out: " + turn);
 					return new Command(CommandType.TAKE_OUT, foodType);
 				}
 				
@@ -237,10 +255,11 @@ public class Player implements lunch.sim.Player
 				targetCorner = targetCornersChosen.get(id);
 
 				// Eat sandwiches only if the player is in the corner and geese are not too close
-				if(currPoint.x == targetCorner.x && currPoint.y == targetCorner.y) {
+				if(currPoint.x == targetCorner.x && currPoint.y == targetCorner.y && usePrediction) {
 					if(!gooseTooClose) {
 						//System.out.println("Player " + id + " is taking out a sandwich.");
 						foodCurrentlySearchingFor = FoodType.SANDWICH;
+						//System.out.println("take out: " + turn);
 						return new Command(CommandType.TAKE_OUT, foodType);
 					}
 					else {
@@ -271,15 +290,14 @@ public class Player implements lunch.sim.Player
 			if((!monkeysTooClose && (ps.get_held_item_type() != FoodType.SANDWICH)) ||
 				(!monkeysTooClose && !gooseTooClose && (ps.get_held_item_type() == FoodType.SANDWICH))) {
 				//System.out.println("Player " + id + " is going to eat " + ps.get_held_item_type().name() + ".");
+				//System.out.println("eat: " + turn);
 				return new Command(CommandType.EAT);
 			}
 		}
 		
 		// The player is waiting, as it did not submit any other actions
 		//System.out.println("Player " + id + " is going to wait.");
-
 		return new Command(CommandType.WAIT);
-		
 	}
 	
 	/**
@@ -289,12 +307,12 @@ public class Player implements lunch.sim.Player
 	 * @param ps: this player's state
 	 */
 	private void printAvailability(PlayerState ps) {
-		//System.out.println("Cookie is available: " + ps.check_availability_item(FoodType.COOKIE)); 
-		//System.out.println("Fruit 1 is available: " + ps.check_availability_item(FoodType.FRUIT1)); 
-		//System.out.println("Fruit 2 is available: " + ps.check_availability_item(FoodType.FRUIT2)); 
-		//System.out.println("Egg is available: " + ps.check_availability_item(FoodType.EGG)); 
-		//System.out.println("Sandwich 1 is available: " + ps.check_availability_item(FoodType.SANDWICH1)); 
-		//System.out.println("Sandwich 2 is available: " + ps.check_availability_item(FoodType.SANDWICH2)); 
+		System.out.println("Cookie is available: " + ps.check_availability_item(FoodType.COOKIE)); 
+		System.out.println("Fruit 1 is available: " + ps.check_availability_item(FoodType.FRUIT1)); 
+		System.out.println("Fruit 2 is available: " + ps.check_availability_item(FoodType.FRUIT2)); 
+		System.out.println("Egg is available: " + ps.check_availability_item(FoodType.EGG)); 
+		System.out.println("Sandwich 1 is available: " + ps.check_availability_item(FoodType.SANDWICH1)); 
+		System.out.println("Sandwich 2 is available: " + ps.check_availability_item(FoodType.SANDWICH2)); 
 	}
 
 	public class T {
@@ -326,22 +344,22 @@ public class Player implements lunch.sim.Player
 
 		public Point getNext10() {
 			Point temp = new Point(0,0);
-			temp.x = location.x + v.x * 10.;
-			temp.y = location.y + v.y * 10.;
+			temp.x = location.x + v.x * 4.5;
+			temp.y = location.y + v.y * 4.5;
 
-			if(temp.x > 50.) {
-				temp.x = 50. - (temp.x - 50.);
+			/*if(temp.x > 50.) {
+				temp.x = 50. - (temp.x - 50.) + 1.;
 			}
 			else if(temp.x < -50.) {
-				temp.x = -50. - (temp.x + 50.);
+				temp.x = -50. - (temp.x + 50.) - 1.;
 			}
 
 			if(temp.y > 50.) {
-				temp.y = 50. - (temp.y - 50.);
+				temp.y = 50. - (temp.y - 50.) + 1.;
 			}
 			else if(temp.y < -50.) {
-				temp.y = 50. - (temp.y - 50.);
-			}
+				temp.y = 50. - (temp.y - 50.) - 1.;
+			}*/
 
 			return temp;
 		}
@@ -349,6 +367,12 @@ public class Player implements lunch.sim.Player
 		//assumes that you are in the corner for animals bouncing off the corner
 		public boolean isFar(Point l) {
 			Point temp = this.getNext10();
+
+			if(isMonkey && Point.dist(l, location) < 10.) {
+				if(temp.x > 50. || temp.x < -50. || temp.y > 50. || temp.y < -50.) {
+					return false;
+				}
+			}
 
 			double distance = Point.dist(l, temp);
 			if(this.isMonkey) {
