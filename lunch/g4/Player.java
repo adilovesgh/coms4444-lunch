@@ -71,6 +71,7 @@ public class Player implements lunch.sim.Player {
 		avatars = "flintstone";
 		random = new Random();
 
+		//START EDIT
 		monkeyT = new ArrayList<>();
 		geeseT = new ArrayList<>();
 
@@ -81,6 +82,7 @@ public class Player implements lunch.sim.Player {
 			else if(animal.which_animal() == AnimalType.GOOSE)
 				geeseT.add(new T(animal.get_location(), false));
 		}
+		//END EDIT
 
 		return avatars;
 	}
@@ -99,7 +101,8 @@ public class Player implements lunch.sim.Player {
 	 *
 	 */
 	public Command getCommand(ArrayList<Family> members, ArrayList<Animal> animals, PlayerState ps) {
-
+		turn++;
+		//START EDIT
 		int mt = 0;
 		int gt = 0;
 		int monkeyInRange = 0;
@@ -116,21 +119,7 @@ public class Player implements lunch.sim.Player {
 				gt++;
 			}
 		}
-
-		/*System.out.println("Monkey!");
-		for(T a : monkeyT) {
-			//System.out.println(a.location);
-			//System.out.println("Next: " + a.getNext());
-			//if(a.slope == Double.MAX_VALUE) System.out.println("undefined");
-			//else System.out.println(a.slope);
-		}
-		System.out.println("Geese!");
-		for(T a: geeseT) {
-			System.out.println(a.location);
-			System.out.println("Next: " + a.getNext());
-			//if(a.slope == Double.MAX_VALUE) System.out.println("undefined");
-			//else System.out.println(a.slope);
-		}*/
+		//END EDIT
 
 		if(turn < 100) {
 			boolean foundValidMove = false;
@@ -140,11 +129,11 @@ public class Player implements lunch.sim.Player {
 				nextMove = new Point(ps.get_location().x + Math.cos(bearing), ps.get_location().y + Math.sin(bearing));
 				foundValidMove = Point.within_bounds(nextMove);
 			}
-			turn++;
+			//turn++;
 			return Command.createMoveCommand(nextMove);
 		}
 
-		turn++;
+		
 
 		// Determine animals sorted by closest distance to the player
 		ArrayList<Animal> clonedAnimals = new ArrayList<>(animals);
@@ -226,16 +215,14 @@ public class Player implements lunch.sim.Player {
 								null;
 			
 			if(foodType != null) {
+				//START EDIT
 				boolean usePrediction = true;
 				if(monkeyInRange > 2) {
-					System.out.println("Too many monkeys in range in 10 moves");
-					System.out.println("Monkeys in range: " + monkeyInRange);
+					//System.out.println("Too many monkeys in range in 10 moves");
+					//System.out.println("Monkeys in range: " + monkeyInRange);
 					usePrediction = false;
 				}
-				else {
-					System.out.println("In the clear!");
-					System.out.println("Monkeys in range: " + monkeyInRange);
-				}
+				//END EDIT also have usePrediction on IF STATEMENTS in line 227 and 245
 				// Take out the food item if it is not a sandwich and monkeys are not too close
 				if(foodType != FoodType.SANDWICH1 && foodType != FoodType.SANDWICH2 && usePrediction) {
 					
