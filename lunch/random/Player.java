@@ -22,16 +22,19 @@ public class Player implements lunch.sim.Player
 	private Random random;
 	private Integer id;
 	private Integer turn;
+	private String avatars;
 
 	public Player()
 	{
 		turn = 0;
 	}
 
-	public void init(ArrayList<Family> members, Integer id, int f,ArrayList<Animal> animals, Integer m, Integer g, double t, Integer s)
+	public String init(ArrayList<Family> members, Integer id, int f,ArrayList<Animal> animals, Integer m, Integer g, double t, Integer s)
 	{
 		this.id = id;
+		avatars = "flintstone";
 		random = new Random(s);
+		return avatars;
 	}
 
 	public Command getCommand(ArrayList<Family> members, ArrayList<Animal> animals, PlayerState ps)
